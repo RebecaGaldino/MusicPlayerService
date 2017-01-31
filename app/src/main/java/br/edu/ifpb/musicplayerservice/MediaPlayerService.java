@@ -576,4 +576,43 @@ public class MediaPlayerService extends Service implements MediaPlayer.OnComplet
             transportControls.stop();
         }
     }
+    @Override
+public int onStartCommand(Intent intent, int flags, int startId) {
+  try {
+      //Load data from SharedPreferences
+      StorageUtil storage = new StorageUtil(getApplicationContext());
+      audioList = storage.loadAudio();
+      audioIndex = storage.loadAudioIndex();
+
+      if (audioIndex != -1 && audioIndex < audioList.size()) {
+          //index is in a valid range
+          activeAudio = audioList.get(audioIndex);
+      } else {
+          stopSelf();
+      }
+  } catch (NullPointerException e) {
+      stopSelf();
+  }
+
+  //Request audio focus
+  if (requestAudioFocus() == false) {
+      //Could not gain focus
+      stopSelf();
+  }
+
+  if (mediaSessionManager == null) {
+      try {
+          initMediaSession();
+          initMediaPlayer();
+      } catch (RemoteException e) {
+          e.printStackTrace();
+          stopSelf();
+      }
+      buildNotification(PlaybackStatus.PLAYING);
+  }
+
+  //Handle Intent action from MediaSession.TransportControls
+  handleIncomingActions(intent);
+  return super.onStartCommand(intent, flags, startId);
+}
 }
